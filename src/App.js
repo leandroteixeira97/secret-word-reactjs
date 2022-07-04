@@ -90,7 +90,7 @@ function App() {
   useEffect(() => {
     const uniqueLetters = [...new Set(letters)];
 
-    if (guessedLetters.length === uniqueLetters.length) {
+    if (uniqueLetters.length !== 0 && guessedLetters.length === uniqueLetters.length) {
       setScore((actualScore) => actualScore += 100);
       Swal.fire({
         title: 'Bom trabalho, você acertou!',

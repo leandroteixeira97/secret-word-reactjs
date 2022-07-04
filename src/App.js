@@ -3,6 +3,7 @@ import './App.css';
 
 // React
 import { useCallback, useEffect, useState } from 'react';
+import Swal from 'sweetalert2';
 
 // Data
 import { wordsList } from './data/words';
@@ -18,6 +19,8 @@ const stages = [
   { id: 3, name: 'end' }
 ];
 
+const guessesQt = 5
+
 function App() {
   const [gameStage, setGameStage] = useState(stages[0].name);
   const [words] = useState(wordsList);
@@ -26,38 +29,91 @@ function App() {
   const [pickedCategory, setPickedCategory] = useState("");
   const [letters, setLetters] = useState([]);
 
-  const pickWordAndCategory = () => {
+  const [guessedLetters, setGuessedLetters] = useState([]);
+  const [wrongLetters, setWrongLetters] = useState([]);
+  const [guesses, setGuesses] = useState(guessesQt);
+  const [score, setScore] = useState(0);
+
+  const pickWordAndCategory = useCallback(() => {
     const categories = Object.keys(words);
     const category = categories[Math.floor(Math.random() * (categories.length))];
     const word = words[category][Math.floor(Math.random() * (words[category].length))];
-    return {word, category}
-  };
+    return { word, category }
+  }, [words]);
 
   // Starts the game
-  const startGame = () => {
+  const startGame = useCallback(() => {
+    clearLetterStates();
     const { word, category } = pickWordAndCategory();
     let wordLetters = word.toLowerCase().split("");
     setPickedCategory(category);
     setPickedWord(word);
     setLetters(wordLetters);
     setGameStage(stages[1].name);
-  };
+  }, [pickWordAndCategory]);
 
   // Process the inputs
-  const verifyLetter = () => {
-    setGameStage(stages[2].name);
+  const verifyLetter = (letter) => {
+    const normalizedLetter = letter.toLowerCase();
+
+    if(guessedLetters.includes(normalizedLetter) || wrongLetters.includes(normalizedLetter)) {
+      return;
+    };
+
+    if (letters.includes(normalizedLetter)) {
+      setGuessedLetters((actualGuessedLetters) => [
+        ...actualGuessedLetters, normalizedLetter
+      ]);
+    } else {
+      setWrongLetters((actualWrongLetters) => [
+        ...actualWrongLetters, normalizedLetter
+      ]);
+
+      setGuesses((actualGuesses) => actualGuesses - 1);
+    };
   };
+
+  const clearLetterStates = () => {
+    setGuesses(guessesQt);
+    setGuessedLetters([]);
+    setWrongLetters([]);
+  };
+
+  useEffect(() => {
+
+    if(guesses <= 0) {
+      clearLetterStates();
+      setGameStage(stages[2].name);
+    }
+  }, [guesses]);
+
+  useEffect(() => {
+    const uniqueLetters = [...new Set(letters)];
+
+    if (guessedLetters.length === uniqueLetters.length) {
+      setScore((actualScore) => actualScore += 100);
+      Swal.fire({
+        title: 'Bom trabalho, você acertou!',
+        text: '+100 pontos',
+        icon: 'success',
+        confirmButtonColor: "#26a0da"
+      });
+      startGame();
+    };
+  }, [guessedLetters, letters, startGame]);
 
   // Restarts the game
   const retry = () => {
+    setScore(0);
+    setGuesses(guessesQt);
     setGameStage(stages[0].name);
   };
 
   return (
     <div className="App">
       {gameStage === 'start' && <StartScreen startGame={startGame} />}
-      {gameStage === 'game' && <Game verifyLetter={verifyLetter} />}
-      {gameStage === 'end' && <GameOver retry={retry} />}
+      {gameStage === 'game' && <Game verifyLetter={verifyLetter} pickedWord={pickedWord} pickedCategory={pickedCategory} letters={letters} guessedLetters={guessedLetters} wrongLetters={wrongLetters} guesses={guesses} score={score} />}
+      {gameStage === 'end' && <GameOver retry={retry} score={score} />}
     </div>
   );
 }
